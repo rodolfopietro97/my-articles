@@ -44,7 +44,7 @@ It consists of two parts:
  1. Generating the mnemonic
  2. Converting mnemonic into a binary seed
 
-This seed can be later used to generate deterministic wallets using BIP-0032 or similar methods.
+This seed can be later used to generate deterministic wallets using BIP-32/ BIP or similar methods.
 
 ### Process of generation
 Better explained:
@@ -59,7 +59,7 @@ Below I explained a "merge" of two:
 
 #### Generating the mnemonic:
 1. Generation of entropy. 
-   * More entropy determine more security BUT longer words!
+   * More entropy determine more security BUT more words!
    * We generate an initial entropy random number with length **ENT** that is multiple of **32 bits** (128 to 256 bits are allowed).
    * The 128 to 256 bits take the possible to us to have 12 to 24 phrases
    * *-ex-* We take ENT=128 bits (12 phrases):
@@ -79,14 +79,12 @@ Below I explained a "merge" of two:
    * *-ex-* We compute sha256 of random initial entropy
     
     ```
-
     sha256 = 
     = sha256(063679ca1b28b5cfda9c186b367e271e)
     = e6cb00ff75869bb1018d25af5c30ab0b059daaa3de6938252881e677b2eae068
     ```
     * Our checksum is the first **CS=128/32=4** bits of obtained sha256:
     ```
-
     e -> 1110 
     ```
     * Now we append checksum to the end of the random initial entropy:
@@ -209,3 +207,160 @@ The last important thing to say of BIP-39 i that with differend passphrase we wi
 
 
 ## BIP 32
+
+This specification is intended to set a standard for HD Wallets.
+The specification consists in 2 parts:
+* **Deriving a tree of keypairs form a single seed**
+   * This part is very theoretical and requires a strong background of cryptography and Elliptic Curve.
+   * We will discuss this part in a very high level, **BUT** here you can find all sources to make a deeper study
+* **Demostrate how to build a wallet structure on top of this tree**
+   * This is the part of our intrest. Here we will see derivation paths and other useful concepts
+
+https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+https://www.youtube.com/watch?v=twXnPw9VR8Q
+
+* In the "past" there used 2 kind of wallets:
+   * **Single Addres Wallet**
+      * A single adress is generated randomly
+      * Easy to backup BUT Lack of privacy
+   * **Bag Of Keys Wallet**
+      * Every time generate a new address
+      * Difficult to backup BUT Good in privacy
+
+*But if we want at the same time **good privacy** and **easiness to backup**?*
+* **THE ANSWER** is HD Wallet.
+
+### Deriving a tree of keypairs form a single seed
+
+In BIP-32 we use **elliptic curve cryptography** using the field and curve parameters defined by **secp256k1**:
+* *T = (p,a,b,G,n,h)* where the finite field F<sub>p</sub> is defined by:
+
+   * p = FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F = 2<sup>256</sup> - 2<sup>32</sup> - 2<sup>9</sup> - 2<sup>8</sup> - 2<sup>7</sup> - 2<sup>6</sup> - 2<sup>4</sup> - 1
+   * The curve E: y<sup>2</sup> = x<sup>3</sup>+ax+b over F<sub>p</sub> is defined by:
+      * a = 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+      * b = 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000007
+    * The base point G in compressed form is:
+       * G = 02 79BE667E F9DCBBAC 55A06295 CE870B07 029BFCDB 2DCE28D9 59F2815B 16F81798
+    * and in uncompressed form is:
+       * G = 04 79BE667E F9DCBBAC 55A06295 CE870B07 029BFCDB 2DCE28D9 59F2815B 16F81798 483ADA77 26A3C465 5DA4FBFC 0E1108A8 FD17B448 A6855419 9C47D08F FB10D4B8
+    * Finally the order n of G and the cofactor are:
+       * n = FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE BAAEDCE6 AF48A03B BFD25E8C D0364141
+       * h = 01
+    
+For more informations: https://en.bitcoin.it/wiki/Secp256k1 , https://www.secg.org/sec2-v2.pdf
+
+#### Conventions
+
+Here: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#conventions you can see how **secp256k1** parameters are setted.
+We don't see it because in this article I'm not explain Elliptic Curves.
+Here (as I write above) I only explains main concepts in high and simplifies level.
+
+#### Extended keys
+
+* In this section we defina a function that derives a number of **child keys** using a **parent key** .
+* In order to be more secure we extend our keys (public and private) with an entropy of 256 bit called **chaincode**.
+   * **Private key**: tuple (k -> private key, c -> chain code)
+   * **Extended public key**: tuple (K -> point(k), c -> chain code)
+      * **point(p)** returns the coordinate pair resulting from EC point multiplication (repeated application of the EC group operation) of the secp256k1 base point with the integer p.
+
+After creation each extended key has:
+ * 2<sup>31</sup> normal child keys
+ * 2<sup>31</sup> hardened child keys 
+
+Each of these child keys has an index:
+ * The normal child keys use indices:
+   * 0 through 2<sup>31-1</sup>. 
+ * The hardened child keys use indices:
+   * 2<sup>31</sup> through 2<sup>32-1</sup>
+   
+**NOTE:** To ease notation for hardened key indices, a number *i<sup>H</sup>* represents *i+2<sup>31</sup>*.
+
+#### Child key derivation (CKD) functions
+
+Given a parent extended key and an index i, it is possible to compute the corresponding child extended key. The algorithm to do so depends on whether the child is a hardened key or not.
+Here you can see main phases:
+
+* **Private parent key → private child key**
+   * The function **CKDpriv((k<sub>par</sub>, c<sub>par</sub>), i) → (k<sub>i</sub>, c<sub>i</sub>)** computes a child extended private key from the parent extended private key
+   * https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#private-parent-key--private-child-key
+
+* **Public parent key → public child key**
+   * The function **CKDpub((K<sub>par</sub>, c<sub>par</sub>), i) → (K<sub>i</sub>, c<sub>i</sub>)** computes a child extended public key from the parent extended public key
+   * It is only defined for non-hardened child keys
+   * https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#public-parent-key--public-child-key
+
+* **Private parent key → public child key**
+   * The function **N((k, c)) → (K, c)** computes the extended public key corresponding to an extended private key
+   * the "neutered" version, as it removes the ability to sign transactions
+   * https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#private-parent-key--public-child-key
+
+* **Public parent key → private child key**
+   * Not possible
+   * https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#public-parent-key--private-child-key
+
+#### The key tree
+
+Important step in this phase is "how to create" key tree.
+* Key tree is cascading of several **CKD** functions (for private or public key)
+   * in our notation:
+      * m -> master private key
+      * M -> master public key
+* We start with one root master extended key **m**
+* We recursively calculate CKD function and we getting **level-1** derived nodes
+* Below we can see an example:
+
+```
+ - Private master key (m):
+
+CKDpriv(
+   CKDpriv(
+      CKDpriv(m,3H), 2), 5
+   )
+or (short notation): m/3H/2/5
+
+
+ - In an analogous way Public master key (M):
+
+CKDpub(
+    CKDpub(
+        CKDpub(M,3),2),5
+    
+)
+or (short notation): M/3/2/5
+```
+
+* Each lef node corresponds to a key
+* Each intermediate node corresponds to a a collection of keys thath descend form them
+* The chain code of leaf nodes are ignored, BU NOT in intermediate nodes
+   * Because of this construction, knowing an extended private key allows reconstruction of all descendant private keys and public keys, and knowing an extended public keys allows reconstruction of all descendant non-hardened public keys.
+
+* Here you can deep informations on:
+   * Key identifiers
+   * Serialization format
+   * Master key generation
+
+* This famous image take an high level of overview of wallet structure:
+
+![](https://raw.githubusercontent.com/bitcoin/bips/master/bip-0032/derivation.png)
+
+### Demostrate how to build a wallet structure on top of this tree
+
+* This section is imortant on practical point of view. Here in fact we can see how tree nodes (seen above) is real applied to wallet structure
+* Previous sections specified key trees and their nodes. 
+* The next step is imposing a wallet structure on this tree. 
+* The layout defined in this section is a default only
+   * clients are encouraged to mimic it for compatibility, even if not all features are supported.
+
+#### Default wallet layout
+* HD Wallet is organized on several **accounts**
+   * Accounts are numbered:
+      * from 0 (the default account: "")
+      * **NOTE**: The clients are not required to support more of 1 account. If they support 1 account, it is the datault
+   * Each account is composed of 2 keypair chains:
+      * **External keychain** used to generate new public addresses
+         * By definition **m/iH/0/k** corresponds to the k'th keypair of the external chain of account number i of the HDW derived from master m
+      * **Internal keychain** used for all other operations (change addresses, generation addresses, ..., **anything that doesn't need to be communicated**)
+         * By definition **m/iH/1/k** corresponds to the k'th keypair of the internal chain of account number i of the HDW derived from master m.
+
+#### Use cases of wallet layout
+
