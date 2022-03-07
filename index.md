@@ -12,3 +12,4 @@ Here are listed all my articles. All are under License GPL v3
 ### Blockchain
 * **[bip-hd_wallets](./bip-hd_wallets.md)**
 * **[my-nfts](./my-nfts.md)**
+   * **[2022War](./2022War.md)**
