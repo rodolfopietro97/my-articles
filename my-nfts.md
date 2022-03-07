@@ -6,7 +6,7 @@ I'm  not a professional artist.
 I'm only a nerd with the desire to innovate my local territory.
 I love innovation and technologies, but at the same time i want to follow the tradition.
 
-# 2020War
+# 2022War
 We are living a very bad period. I created this NFT for Ucraina and Ucranians people.
 
 Part of the proceeds will be donated to ucranian people that suffers war.
