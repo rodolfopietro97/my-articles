@@ -1,5 +1,4 @@
-# Repository of all my articles
+# Articles
+This project contains github page of personal blog of Rodolfo Pietro Calabrò.
 
-In this repository you can see all my articles.
-
-**PLEASE** if you use it, cite this repo
+It is created using a little customized version on [minima](https://github.com/jekyll/minima) theme.
