@@ -1,7 +1,10 @@
+# Theme
 remote_theme: pages-themes/minimal@v0.2.0
 plugins:
 - jekyll-remote-theme
 
-title: [Rodolfo Pietro Articles]
-description: [Articles and pubblications of Rodolfo Pietro Calabrò.]
-show_downloads: ["false"]
+# Page settings
+title: Rodolfo Pietro Articles
+logo: /assets/img/me.png
+description: Here you can find all my articles and publications.
+show_downloads: false
