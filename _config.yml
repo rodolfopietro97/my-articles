@@ -1,1 +1,7 @@
-theme: Chirpy
+remote_theme: pages-themes/minimal@v0.2.0
+plugins:
+- jekyll-remote-theme
+
+title: [Rodolfo Pietro Articles]
+description: [Articles and pubblications of Rodolfo Pietro Calabrò.]
+show_downloads: ["false"]
